@@ -156,6 +156,9 @@ const FORM = {
   url: "https://docs.google.com/forms/d/e/1FAIpQLScomt72HtGL40PKsAKP5ink0dzaxvcfhob96QM7wveNR3oZ4w/formResponse",
   entry: { chave:"entry.536982582", agente:"entry.1107525376", cliente:"entry.847610927", tipo:"entry.44714683", alvo:"entry.804339568", validada:"entry.80178574", item:"entry.1044274662", qtd:"entry.1869173889", obs:"entry.44071774", versao:"entry.326868490" }
 };
+/* PINs por consultor (4 dígitos). Troque os números abaixo e informe cada um SÓ ao seu dono.
+   Deixar "" (vazio) desliga o PIN daquele consultor. */
+const PINS = { ELIOMAR:"2201", FABIO:"7315", FERNANDO:"4082", HIAGO:"5947", WEBER:"8163" };
 /* ============================================================ */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const brl=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -169,7 +172,20 @@ fetch('dados.json').then(r=>r.json()).then(d=>{DB=d;boot();}).catch(()=>{$('#lis
 function boot(){
   const sel=$('#agente'); DB.meta.agentes.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;sel.appendChild(o);});
   if(!AG) AG=DB.meta.agentes[0]; sel.value=AG;
-  sel.onchange=()=>{AG=sel.value;localStorage.setItem('b3_agente',AG);PAGE=60;refresh();};
+  function pinOk(a){ if(!PINS[a]) return true;
+    const ok=JSON.parse(localStorage.getItem('b3_pin_ok')||'[]');
+    if(ok.includes(a)) return true;
+    const d=prompt('PIN do consultor '+a+':');
+    if(d===PINS[a]){ ok.push(a); localStorage.setItem('b3_pin_ok',JSON.stringify(ok)); return true; }
+    if(d!==null) alert('PIN incorreto.');
+    return false; }
+  sel.onchange=()=>{ const alvo=sel.value;
+    if(!pinOk(alvo)){ sel.value=AG; return; }
+    AG=alvo; localStorage.setItem('b3_agente',AG); PAGE=60; refresh(); };
+  // primeira abertura do aparelho também pede o PIN do consultor salvo/padrão
+  if(PINS[AG] && !JSON.parse(localStorage.getItem('b3_pin_ok')||'[]').includes(AG)){
+    setTimeout(()=>{ if(!pinOk(AG)){ /* mantém tela, mas sem desbloquear a troca */ } },400);
+  }
   $('#foot').textContent=`Dados de ${DB.meta.versao} · referência ${DB.meta.data_ref.split('-').reverse().join('/')} · gerado ${DB.meta.gerado}`;
   const tipos=[...new Set(DB.oportunidades.map(o=>o.Tipo))]; tipos.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=TIPO_LABEL[t]||t;$('#tipo').appendChild(o);});
   DB.meta.grupos.forEach(g=>{const o=document.createElement('option');o.value=g;o.textContent=g.replace('|',' · ');$('#mgrupo').appendChild(o);});
